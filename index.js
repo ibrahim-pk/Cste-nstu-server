@@ -42,6 +42,10 @@ const noticeCollection = client.db("CSTE").collection("Notice");
 const onlineFormCollection = client.db("CSTE").collection("OnlineForm");
 const examFeeFormCollection = client.db("CSTE").collection("Exam-Fee");
 const studentNoticeCollection = client.db("CSTE").collection("Student-Notice");
+const officialEventCollection = client.db("CSTE").collection("cste-official");
+const playListCollection = client.db("CSTE").collection("Online-Playlist");
+const jobCuirculerCollection = client.db("CSTE").collection("Online-Job");
+const jobRegistrationCollection = client.db("CSTE").collection("Job-Registration");
 // //location
 // const IPGeolocationAPI = require("ip-geolocation-api-javascript-sdk");
 // const ipgeolocationApi = new IPGeolocationAPI(
@@ -131,6 +135,7 @@ app.post("/api/user/login", async (req, res) => {
   }
 });
 
+
 //teacher login
 app.post("/api/teacher/login", async (req, res) => {
   try {
@@ -203,6 +208,26 @@ app.patch("/api/teacher/profile/image/:id", async (req, res) => {
     res.status(400).send({ error: err.massage });
   }
 });
+//Online playlist
+app.post('/api/online/playlist',verifyJwt,async(req,res)=>{
+  try {
+    const playlist=req.body
+  await playListCollection.insertOne(playlist)
+  res.status(200).send({msg:'Play List Added'})
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+ 
+})
+app.get('/api/online/playlist',async(req,res)=>{
+  try {
+ const allPlayList= await playListCollection.find({}).toArray()
+  res.status(200).send(allPlayList)
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+ 
+})
 //update and add techer information
 app.patch("/api/teacher/profile/information/:id", async (req, res) => {
   try {
@@ -262,6 +287,258 @@ app.get("/api/user", async (req, res) => {
     res.status(400).send({ error: err.massage });
   }
 });
+//job circuler
+app.post('/api/online/job/circuler',verifyJwt,async(req,res)=>{
+  try{
+    const jobInfo=req.body;
+  await jobCuirculerCollection.insertOne(jobInfo)
+  res.status(200).send({msg:'Posted'})
+  }catch(err){
+    res.status(400).send({ error: err.massage });
+  }
+
+})
+app.get('/api/online/job/circuler',async(req,res)=>{
+  try{
+ const allJobCircular= await jobCuirculerCollection.find({}).toArray();
+  res.status(200).send({allJob:allJobCircular})
+  }catch(err){
+    res.status(400).send({ error: err.massage });
+  }
+
+})
+
+//job's register
+app.post("/api/job/apply/registration", async (req, res) => {
+  try {
+    const form = req.body;
+    //console.log(form)
+    const existUser=await jobRegistrationCollection.findOne({appEmail:req.body.appEmail})
+    if(existUser){
+      res.status(200).send({ error: 'Email already used!' });
+    }else{
+      await jobRegistrationCollection.insertOne(form);
+     res.status(200).send({ msg: "registration completed" });
+    }
+    
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+app.get("/api/job/applicant/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    //console.log(id)
+    const apllicatUser=await jobRegistrationCollection.findOne({_id:ObjectId(id)})
+    if(apllicatUser){
+      res.status(200).send({ info:apllicatUser});
+    }else{
+     res.status(200).send({ error: "Invalid user!" });
+    }
+    
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+//job's login
+app.post("/api/job/apply/login", async (req, res) => {
+  try {
+    const user = req.body;
+    const userInfo=await jobRegistrationCollection.findOne({appEmail:req.body.appEmail})
+    if(!userInfo){
+      res.status(200).send({ error: 'Invalid email!' });
+    }else{
+      if(userInfo.appPassword===req.body.appPassword){
+        const payload = {
+          user: {
+            appEmail: user.appEmail,
+          },
+        };
+        const token = jwt.sign(payload, process.env.JWT_SECRETE, {
+          expiresIn: "1d",
+        });
+        res.status(200).send({
+          msg: `Login Succesfully`,
+          token: token,
+          userInfo: userInfo,
+        });
+        }
+      
+    }
+    
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//applicant qualification
+app.patch("/api/job/apply/qualification",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userQualification=userInfo?.qualification || []
+    let qualiArray=[...userQualification,userData?.qualification]
+
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedQualification= {
+      $set: {
+        qualification:qualiArray,
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedQualification);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Add your Qualification" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//delete qualification
+app.post("/api/job/apply/qualification",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+   // console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userQualification=userInfo?.qualification || []
+    // console.log(userQualification[userData.index])
+    let qualiArray=[...userQualification]
+    qualiArray.splice(userData?.index,1)
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedQualification= {
+      $set: {
+        qualification:qualiArray
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedQualification);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Deleted" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+
+//applicant training
+app.patch("/api/job/apply/training",verifyJwt, async (req, res) => {
+  try {
+
+    const userData = req.body;
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userTraining=userInfo?.training || []
+    let trainingArray=[...userTraining,userData?.training]
+
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedTraining= {
+      $set: {
+        training:trainingArray,
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedTraining);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Add your Training" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//delete training
+app.post("/api/job/apply/training",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+   // console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userTraining=userInfo?.training || []
+    // console.log(userQualification[userData.index])
+    let trainingArray=[...userTraining]
+    trainingArray.splice(userData?.index,1)
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedQualification= {
+      $set: {
+        training:trainingArray
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedQualification);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Deleted" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+//applicant experience
+app.patch("/api/job/apply/experience",verifyJwt, async (req, res) => {
+  try {
+
+    const userData = req.body;
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userExperience=userInfo?.experience || []
+    let experienceArray=[...userExperience,userData?.experience]
+
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedExperience= {
+      $set: {
+        experience:experienceArray,
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedExperience);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Add your Experience" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//delete training
+app.post("/api/job/apply/experience",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+   // console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userExperience=userInfo?.experience || []
+    // console.log(userQualification[userData.index])
+    let experienceArray=[...userExperience]
+    experienceArray.splice(userData?.index,1)
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedExp= {
+      $set: {
+        experience:experienceArray
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedExp);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Deleted" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+
+
+
+
+
 
 //user post registration
 app.post("/api/user/registration", async (req, res) => {
@@ -618,7 +895,7 @@ app.post("/api/add/news", async (req, res) => {
 //home news
 app.get("/api/add/news", async (req, res) => {
   try {
-    const news = await newsCollection.find({}).sort({ date: 1 }).toArray();
+    const news = await newsCollection.find({}).sort({ date: -1 }).toArray();
     res.status(200).send({ news: news[0] });
   } catch (err) {
     res.status(400).send({ error: err.massage });
@@ -666,6 +943,33 @@ app.get("/api/add/notice", async (req, res) => {
   try {
     const notice = await noticeCollection.find({}).limit(5).toArray();
     res.status(200).send({ notice: notice });
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//csteofficial
+app.post("/api/add/official/event",verifyJwt, async (req, res) => {
+  try {
+    const event = req.body;
+    await officialEventCollection.insertOne(event);
+    res.status(200).send({ msg: `Added` });
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+app.get("/api/add/official/event", async (req, res) => {
+  try {
+    const event = await officialEventCollection.find({}).toArray();
+    res.status(200).send({ allEvent: event });
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+app.delete("/api/add/official/event/:id", verifyJwt, async (req, res) => {
+  try {
+    const id = req.params.id;
+    await officialEventCollection.deleteOne({ _id: ObjectId(id) });
+    res.status(200).send({ msg: "deleted" });
   } catch (err) {
     res.status(400).send({ error: err.massage });
   }
@@ -861,8 +1165,9 @@ app.post("/success", async (req, res) => {
         },
       }
     );
+   
   }
-
+  
   res.redirect(`https://cste-dept.web.app/success/${req.body.tran_id}`);
 });
 app.post("/fail", async (req, res) => {
