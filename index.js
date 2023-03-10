@@ -298,10 +298,22 @@ app.post('/api/online/job/circuler',verifyJwt,async(req,res)=>{
   }
 
 })
+//all job get
 app.get('/api/online/job/circuler',async(req,res)=>{
   try{
  const allJobCircular= await jobCuirculerCollection.find({}).toArray();
   res.status(200).send({allJob:allJobCircular})
+  }catch(err){
+    res.status(400).send({ error: err.massage });
+  }
+
+})
+//single job get
+app.get('/api/online/job/single/:id',async(req,res)=>{
+  try{
+    const id=req.params.id
+ const singleJob= await jobCuirculerCollection.findOne({_id:ObjectId(id)});
+  res.status(200).send({Job:singleJob})
   }catch(err){
     res.status(400).send({ error: err.massage });
   }
@@ -506,7 +518,7 @@ app.patch("/api/job/apply/experience",verifyJwt, async (req, res) => {
     res.status(400).send({ error: err.massage });
   }
 });
-//delete training
+//delete experience
 app.post("/api/job/apply/experience",verifyJwt, async (req, res) => {
   try {
     const userData = req.body;
@@ -534,7 +546,114 @@ app.post("/api/job/apply/experience",verifyJwt, async (req, res) => {
   }
 });
 
+//applicant document
+app.patch("/api/job/apply/document",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+    //console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userDocument=userInfo?.document || []
+    let documentArray=[...userDocument,userData?.document]
 
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedDocument= {
+      $set: {
+        document:documentArray,
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedDocument);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Add your Document" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//delete document
+app.post("/api/job/apply/document",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+    //console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userDocument=userInfo?.document || []
+    // console.log(userQualification[userData.index])
+    let documentArray=[...userDocument]
+    documentArray.splice(userData?.index,1)
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedDocument= {
+      $set: {
+        document:documentArray
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedDocument);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Deleted" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+
+//applicant document
+app.patch("/api/job/apply/publication",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+    //console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userPublication=userInfo?.publication || []
+    let publicationArray=[...userPublication,userData?.publication]
+
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedPublication= {
+      $set: {
+        publication:publicationArray,
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedPublication);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Add your Publication" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+//delete document
+app.post("/api/job/apply/publication",verifyJwt, async (req, res) => {
+  try {
+    const userData = req.body;
+    //console.log(userData)
+    const userInfo=await jobRegistrationCollection.findOne({_id:ObjectId(req.body.id)}) 
+    let userPublication=userInfo?.publication || []
+    // console.log(userQualification[userData.index])
+    let publicationArray=[...userPublication]
+    publicationArray.splice(userData?.index,1)
+    const query = {_id:ObjectId(req.body.id)};
+    const updatedPublication= {
+      $set: {
+        publication:publicationArray
+      },
+    };
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedPublication);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged){
+      res.status(200).send({ msg: "Deleted" });
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
 
 
 
@@ -1066,20 +1185,20 @@ app.get("/api/read/student/notice/:id", verifyJwt, async (req, res) => {
 });
 //payment init
 app.post("/init", verifyJwt, async (req, res) => {
-  // console.log(req.body);
+   //console.log(req.body);
   try {
     const data = {
-      total_amount: req.body.fee,
-      form_ref: req.body.ref,
+      total_amount: req.body?.fee,
+      form_ref: req.body?.ref,
       currency: "BDT",
       tran_id: uuidv4(),
-      stu_id: req.body.studentInfo.studentID,
-      success_url: "https://cste-club-ibrahimecste.vercel.app/success",
+      stu_id: req.body.studentInfo?.studentID,
+      success_url: "http://localhost:5000/success",
       fail_url: "https://cste-club-ibrahimecste.vercel.app/fail",
       cancel_url: "https://cste-club-ibrahimecste.vercel.app/cancel",
       ipn_url: "http://yoursite.com/ipn",
-      studentInfo: req.body.studentInfo,
-      regFormInfo: req.body.regForm,
+      studentInfo: req.body?.studentInfo,
+      regFormInfo: req.body?.regForm,
       payment: false,
       shipping_method: "Courier",
       product_name: "Computer.",
@@ -1133,6 +1252,74 @@ app.post("/init", verifyJwt, async (req, res) => {
     });
   }
 });
+//job applicat payment init
+app.post("/applicant/init", verifyJwt, async (req, res) => {
+  //console.log(req.body);
+ try {
+   const data = {
+     total_amount: req.body?.fee,
+     form_ref: req.body?.ref,
+     currency: "BDT",
+     tran_id: uuidv4(),
+     success_url: "http://localhost:5000/success",
+     fail_url: "https://cste-club-ibrahimecste.vercel.app/fail",
+     cancel_url: "https://cste-club-ibrahimecste.vercel.app/cancel",
+     ipn_url: "http://yoursite.com/ipn",
+     applicantId: req.body?.applicantId,
+     jobId:req.body?.jobId,
+     payment: false,
+     shipping_method: "Courier",
+     product_name: "Computer.",
+     product_category: "Electronic",
+     product_profile: "general",
+     cus_name: "Customer Name",
+     cus_email: "cust@yahoo.com",
+     cus_add1: "Dhaka",
+     cus_add2: "Dhaka",
+     cus_city: "Dhaka",
+     cus_state: "Dhaka",
+     cus_postcode: "1000",
+     cus_country: "Bangladesh",
+     cus_phone: "01711111111",
+     cus_fax: "01711111111",
+     ship_name: "Customer Name",
+     ship_add1: "Dhaka",
+     ship_add2: "Dhaka",
+     ship_city: "Dhaka",
+     ship_state: "Dhaka",
+     ship_postcode: 1000,
+     ship_country: "Bangladesh",
+     multi_card_name: "mastercard",
+     value_a: "ref001_A",
+     value_b: "ref002_B",
+     value_c: "ref003_C",
+     value_d: "ref004_D",
+   };
+
+   await onlineFormCollection.insertOne(data);
+   const sslcommer = new SSLCommerzPayment(
+     process.env.SSL_STORE_ID,
+     process.env.SSL_SECRET_KEY,
+     false
+   ); //true for live default false for sandbox
+   sslcommer.init(data).then((data) => {
+     //process the response that got from sslcommerz
+     //https://developer.sslcommerz.com/doc/v4/#returned-parameters
+     // console.log(data);
+     if (data.GatewayPageURL) {
+       res.status(200).send({ paymentUrl: data.GatewayPageURL });
+     } else {
+       res.status(200).send({
+         error: "SSL session was not successful",
+       });
+     }
+   });
+ } catch (err) {
+   return res.status(400).send({
+     error: err.massage,
+   });
+ }
+});
 app.post("/success", async (req, res) => {
   await onlineFormCollection.updateOne(
     { tran_id: req.body.tran_id },
@@ -1156,12 +1343,23 @@ app.post("/success", async (req, res) => {
       }
     );
   }
-  if (form.form_ref === "admit") {
+ else if (form.form_ref === "admit") {
     await addStudent.updateOne(
       { studentId: form.stu_id },
       {
         $set: {
           examFee: form,
+        },
+      }
+    );
+   
+  }
+  else if (form.form_ref==="job") {
+    await jobRegistrationCollection.updateOne(
+      { _id:ObjectId(form?.applicantId)},
+      {
+        $set: {
+          PaymentDetails: form,
         },
       }
     );
