@@ -2,7 +2,10 @@ const express = require("express");
 const SSLCommerzPayment = require("sslcommerz");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb")
+// var messagebird = require('messagebird')('test_gshuPaZoeEG6ovbc8M79w0QyM');
+
+
 const { v4: uuidv4 } = require("uuid");
 const verifyJwt = require("./jwt");
 require("dotenv").config();
@@ -308,6 +311,60 @@ app.get('/api/online/job/circuler',async(req,res)=>{
   }
 
 })
+
+//all applicant specific job
+app.get(`/api/online/job/applicant/:id`,verifyJwt,async(req,res)=>{
+  try{
+    const id=req.params.id
+    const allApplicant=await jobRegistrationCollection.find({}).toArray()
+    const applicantById=allApplicant.filter(res=>res?.PaymentDetails?.jobId===id)
+  res.status(200).send({allApplicant:applicantById})
+  }catch(err){
+    res.status(400).send({ error: err.massage });
+  }
+
+})
+
+//admit card approve
+app.patch("/api/job/applicant/isapprove/:id", async (req, res) => {
+  try {
+    const data=req.body.value
+    const id=req.params.id
+    const query = {_id:ObjectId(id)};
+    let updatedAdmit;
+    if(data===1){
+     updatedAdmit= {
+        $set: {
+          admitCard:true,
+        },
+      };
+    }else{
+       updatedAdmit= {
+        $set: {
+          admitCard:false,
+        },
+      };
+    }
+   
+   const updatedDate= await jobRegistrationCollection.updateOne(query, updatedAdmit);
+    //console.log(updatedDate)
+    if(updatedDate.acknowledged &&data===1){
+      res.status(200).send({ msg: "Selected!" });
+    }else if(updatedDate.acknowledged &&data===0){
+      res.status(200).send({ msg: "Cancled!" })
+      
+    }else{
+      res.status(200).send({ error: "Something Wrong" });
+    }
+  } catch (err) {
+    res.status(400).send({ error: err.massage });
+  }
+});
+
+
+
+
+
 //single job get
 app.get('/api/online/job/single/:id',async(req,res)=>{
   try{
@@ -1400,7 +1457,22 @@ app.patch("/api/add/reg/time", verifyJwt, async (req, res) => {
   }
 });
 
-//test api
+// //testsms api
+// app.get("/client/sms", (req, res) => {
+//   messagebird.messages.create({
+//     originator : '01612701346',
+//     recipients : [ '018925893777' ],
+//     body : 'Hello World, I am a text message and I was hatched by Javascript code!'
+//  },function (err, response) {
+//   if (err) {
+//      console.log("ERROR:");
+//      console.log(err);
+//  } else {
+//      console.log("SUCCESS:");
+//      console.log(response);
+//  }
+// });
+// });
 app.get("/", (req, res) => {
   res.status(200).send("Hi server!");
 });
